@@ -8,6 +8,9 @@ export default function ProductOrderControls({
   onQuantityChange,
   onOrder,
 }: ProductOrderControlsProps) {
+  const parsedQuantity = Number(quantity);
+  const isQuantityValid = Number.isInteger(parsedQuantity) && parsedQuantity >= 1;
+
   return (
     <div className="detail-order-box">
       <div className="field detail-quantity">
@@ -16,11 +19,18 @@ export default function ProductOrderControls({
           id="detailQuantity"
           type="number"
           min={1}
+          step={1}
+          required
           value={quantity}
-          onChange={(e) => onQuantityChange(Math.max(1, Number(e.target.value) || 1))}
+          onChange={(e) => onQuantityChange(e.target.value)}
         />
       </div>
-      <Button type="button" className="detail-order-button" onClick={onOrder}>
+      <Button
+        type="button"
+        className="detail-order-button"
+        disabled={!isQuantityValid}
+        onClick={onOrder}
+      >
         注文情報の入力へ
       </Button>
     </div>

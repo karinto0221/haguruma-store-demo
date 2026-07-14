@@ -12,7 +12,9 @@ import { AttachmentKind, OrderAttachment } from '../type';
 
 function getAttachmentKind(fileName: string): AttachmentKind {
   const extension = fileName.split('.').pop()?.toLowerCase();
-  if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension || '')) return 'image';
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif'].includes(extension || '')) {
+    return 'image';
+  }
   if (extension === 'pdf') return 'pdf';
   return 'other';
 }

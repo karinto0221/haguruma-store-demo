@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import { ProductCategoryEntity } from './product-category.entity';
 import { CreateProductCategoryDto } from './dto/create-product-category.dto';
 import { UpdateProductCategoryDto } from './dto/update-product-category.dto';
+import { ImageProcessingService } from '../image/image-processing.service';
 
 export interface ProductCategoryRecord {
   id: number;
@@ -29,6 +30,7 @@ export class ProductCategoriesService {
   constructor(
     @InjectRepository(ProductCategoryEntity)
     private readonly repository: Repository<ProductCategoryEntity>,
+    private readonly imageProcessingService: ImageProcessingService,
   ) {}
 
   async findAll(): Promise<ProductCategoryRecord[]> {
@@ -52,20 +54,29 @@ export class ProductCategoriesService {
     if (!entity.imageData || !entity.imageMimeType) {
       throw new NotFoundException('カテゴリ画像が登録されていません');
     }
-    return { data: entity.imageData, mimeType: entity.imageMimeType };
+    const image = await this.imageProcessingService.normalize(
+      entity.imageData,
+      entity.imageMimeType,
+    );
+    return { data: image.data, mimeType: image.mimeType };
   }
 
   async updateImage(
     id: number,
     file?: Express.Multer.File,
   ): Promise<ProductCategoryRecord> {
-    if (!file || !file.mimetype.startsWith('image/')) {
+    if (
+      !file ||
+      (!file.mimetype.startsWith('image/') &&
+        !this.imageProcessingService.isHeic(file.mimetype, file.originalname))
+    ) {
       throw new BadRequestException('画像ファイルを選択してください');
     }
     const entity = await this.repository.findOne({ where: { id } });
     if (!entity) throw new NotFoundException('指定された商品カテゴリが見つかりません');
-    entity.imageData = file.buffer;
-    entity.imageMimeType = file.mimetype;
+    const image = await this.imageProcessingService.normalizeUpload(file);
+    entity.imageData = image.data;
+    entity.imageMimeType = image.mimeType;
     await this.repository.save(entity);
     return this.toRecord(entity);
   }

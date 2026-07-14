@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { OrdersRepository, OrderRecord } from '../data/orders.repository';
@@ -8,14 +8,18 @@ import { ProductsService } from '../products/products.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { QueryOrdersDto } from './dto/query-orders.dto';
 import { OrderStatus } from './order-status';
+import { ImageProcessingService } from '../image/image-processing.service';
 
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
+
   constructor(
     private readonly ordersRepository: OrdersRepository,
     private readonly storageService: StorageService,
     private readonly mailService: MailService,
     private readonly productsService: ProductsService,
+    private readonly imageProcessingService: ImageProcessingService,
   ) {}
 
   async createOrder(dto: CreateOrderDto, files: Express.Multer.File[]) {
@@ -29,9 +33,16 @@ export class OrdersService {
     const filePaths: string[] = [];
     const fileNames: string[] = [];
     for (const file of files || []) {
-      const savedPath = await this.storageService.save(orderId, file.originalname, file.buffer);
+      const processed = this.imageProcessingService.isHeic(file.mimetype, file.originalname)
+        ? await this.imageProcessingService.normalizeUpload(file)
+        : { data: file.buffer, fileName: file.originalname };
+      const savedPath = await this.storageService.save(
+        orderId,
+        processed.fileName,
+        processed.data,
+      );
       filePaths.push(savedPath);
-      fileNames.push(file.originalname);
+      fileNames.push(processed.fileName);
     }
 
     const order: OrderRecord = {
@@ -51,16 +62,38 @@ export class OrdersService {
 
     await this.ordersRepository.create(order);
 
-    // 管理者への通知メール。失敗しても注文自体は成立させたいのでエラーは握りつぶさずログのみにする
-    await this.mailService.sendNewOrderNotification({
-      orderId: order.id,
-      productName: order.productName,
-      customerName: order.customerName,
-      customerEmail: order.customerEmail,
-      customerPhone: order.customerPhone,
-      quantity: order.quantity,
-      notes: order.notes,
-      fileNames: order.fileNames,
+    // 管理者通知とお客様の受付完了メールは独立して送信する。
+    // 注文はすでに保存済みのため、メール失敗でAPIを500にして重複注文を誘発しない。
+    const mailResults = await Promise.allSettled([
+      this.mailService.sendNewOrderNotification({
+        orderId: order.id,
+        productName: order.productName,
+        customerName: order.customerName,
+        customerEmail: order.customerEmail,
+        customerPhone: order.customerPhone,
+        quantity: order.quantity,
+        notes: order.notes,
+        fileNames: order.fileNames,
+      }),
+      this.mailService.sendOrderConfirmation({
+        to: order.customerEmail,
+        orderId: order.id,
+        productName: order.productName,
+        customerName: order.customerName,
+        quantity: order.quantity,
+      }),
+    ]);
+
+    const mailLabels = ['管理者向け新規注文通知', 'お客様向け注文受付通知'];
+    mailResults.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        const error =
+          result.reason instanceof Error ? result.reason : new Error(String(result.reason));
+        this.logger.error(
+          `${mailLabels[index]}の送信に失敗しました (注文ID: ${order.id})`,
+          error.stack,
+        );
+      }
     });
 
     return { orderId: order.id };
@@ -92,9 +125,19 @@ export class OrdersService {
     }
 
     try {
-      const buffer = await this.storageService.read(order.filePaths[fileIndex]);
+      const storedBuffer = await this.storageService.read(order.filePaths[fileIndex]);
       const fileName = order.fileNames[fileIndex] || `attachment-${fileIndex + 1}`;
-      return { buffer, fileName, mimeType: this.getMimeType(fileName) };
+      const mimeType = this.getMimeType(fileName);
+      const processed = await this.imageProcessingService.normalize(
+        storedBuffer,
+        mimeType,
+        fileName,
+      );
+      return {
+        buffer: processed.data,
+        fileName: processed.fileName,
+        mimeType: processed.mimeType,
+      };
     } catch {
       throw new NotFoundException('添付ファイルが見つかりません');
     }
@@ -138,6 +181,10 @@ export class OrdersService {
         return 'image/gif';
       case '.webp':
         return 'image/webp';
+      case '.heic':
+        return 'image/heic';
+      case '.heif':
+        return 'image/heif';
       case '.pdf':
         return 'application/pdf';
       default:

@@ -22,7 +22,7 @@ export default function ProductDetail() {
       <ProductOrderControls
         quantity={quantity}
         onQuantityChange={setQuantity}
-        onOrder={() => navigate(`/order/${product.id}?quantity=${quantity}`)}
+        onOrder={() => navigate(`/order/${product.id}?quantity=${Number(quantity)}`)}
       />
     </div>
   );

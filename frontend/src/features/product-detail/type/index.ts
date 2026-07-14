@@ -10,7 +10,7 @@ export interface ProductSummaryProps {
 }
 
 export interface ProductOrderControlsProps {
-  quantity: number;
-  onQuantityChange: (quantity: number) => void;
+  quantity: string;
+  onQuantityChange: (quantity: string) => void;
   onOrder: () => void;
 }

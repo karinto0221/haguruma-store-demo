@@ -95,11 +95,9 @@ backendを`docker compose`経由で起動する場合はコンテナ間通信用
 
 管理者向けエンドポイント(`GET /orders`, `PATCH /orders/:id/status`, `POST /orders/:id/send-payment-link`)は、リクエストごとに`x-admin-id`/`x-admin-password`ヘッダーを比較検証するのみで、サーバー側にセッションやトークンの概念は無い。フロントエンドは`AdminAuthProvider`のReact stateとブラウザの`sessionStorage`に認証情報を保持するため、同じタブのリロードではログイン状態を復元する。ログアウトまたはタブを閉じると認証情報は破棄される。
 
-### エラーハンドリングの非対称性(既知の挙動)
+### メール送信のエラーハンドリング
 
-`OrdersService.createOrder`と`sendPaymentLink`はメール送信(`MailService`)をtry/catchで保護していない。
-
-- `createOrder`: DB保存 → メール送信の順で、メール送信が失敗すると500エラーがクライアントに返るが、注文自体は既にDBに保存済み。
+- `createOrder`: DB保存後に、管理者向け新規注文通知とお客様向け注文受付通知を`Promise.allSettled`で独立送信する。片方または両方が失敗しても注文は成立し、失敗を注文ID付きでログに記録して201を返す。
 - `sendPaymentLink`: メール送信 → ステータス更新の順で、メール送信が失敗するとステータス更新は実行されない。
 
 この挙動を変更する場合は`docs/api-definition.md`の該当セクション(1.5, 3.2, 3.5)を合わせて更新すること。

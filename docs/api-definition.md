@@ -43,9 +43,9 @@
 | 認証エラー | 401 | `{"message":"ユーザーIDまたはパスワードが正しくありません","error":"Unauthorized","statusCode":401}` |
 | リソース未検出 | 404 | `{"message":"注文が見つかりません","error":"Not Found","statusCode":404}` |
 | 一意制約・外部キー制約違反(商品ID重複、参照が残っている状態での削除など) | 409 | `{"message":"このIDは既に使用されています","error":"Conflict","statusCode":409}` |
-| 想定外の例外(メール送信失敗など) | 500 | `{"statusCode":500,"message":"Internal server error"}` |
+| 想定外の例外 | 500 | `{"statusCode":500,"message":"Internal server error"}` |
 
-> **重要な既知の挙動**: `POST /orders`はメール通知送信(`MailService.sendNewOrderNotification`)がtry/catchで保護されておらず、SMTP接続に失敗すると例外がそのまま伝播し、クライアントには**500エラーが返る**。しかし、この時点で**注文データ・添付ファイルは既にDB/ディスクへ保存済み**であるため、クライアントからは失敗に見えても実際には注文が成立している(実機検証済み: `SMTP_HOST`を到達不能な宛先にして注文を送信したところ、APIは500を返したが、Postgresの`orders`テーブルには正しく1件登録されていた)。同様に`POST /orders/:id/send-payment-link`もメール送信をtry/catchしておらず、こちらはメール送信より前にステータス更新を行っていないため、送信失敗時はステータスが`payment_link_sent`に更新されない(=注文側は失敗のまま)。
+> **メール送信失敗時の挙動**: `POST /orders`は注文保存後に管理者向け新規注文通知とお客様向け注文受付通知を独立して送信する。どちらか、または両方のSMTP送信が失敗しても失敗内容をサーバーログへ記録し、保存済み注文の`orderId`を含む201レスポンスを返す。一方、`POST /orders/:id/send-payment-link`はメール送信失敗時に500を返し、ステータスを`payment_link_sent`に更新しない。
 
 ---
 
@@ -128,7 +128,7 @@
 | customerPhone | string | 任意 | 文字列 | 注文者電話番号 |
 | quantity | number | ○ | 整数、1以上 | 数量(フォームでは文字列で送られ、サーバー側で数値変換) |
 | notes | string | 任意 | - | 備考 |
-| files | file(複数) | 任意 | 最大5ファイル、1ファイルあたり最大20MB | デザインファイル。フィールド名は`files`固定 |
+| files | file(複数) | 任意 | 最大5ファイル、1ファイルあたり最大20MB | デザインファイル。フィールド名は`files`固定。HEIC/HEIF画像はJPEGへ変換して保存 |
 
 **レスポンス 201**
 
@@ -145,14 +145,16 @@
 | 必須項目欠落・型不正 | 400 | `{"message":["customerName should not be empty","quantity must not be less than 1"],"error":"Bad Request","statusCode":400}` |
 | ファイル数が5件超過 | 400 | `{"message":"Unexpected field","error":"Bad Request","statusCode":400}` |
 | productIdに一致する商品が無い | 404 | `{"message":"指定された商品が見つかりません","error":"Not Found","statusCode":404}` |
-| メール通知送信に失敗 | 500 | `{"statusCode":500,"message":"Internal server error"}`(1.5の注記のとおり、注文自体は保存済み) |
 
 **処理内容(参考)**
 
 1. `productId`が実在するか確認
-2. 添付ファイルをディスク(`UPLOAD_DIR/{orderId}/`)に保存
+2. HEIC/HEIF画像は表示互換性のためJPEGへ変換し、それ以外の添付ファイルとともにディスク(`UPLOAD_DIR/{orderId}/`)へ保存
 3. 注文をDB(`orders`テーブル)に`status: 'new'`で保存
-4. `ADMIN_NOTIFY_EMAIL`宛に新規注文通知メールを送信(SMTP未設定時はログ出力のみでスキップ、エラーにはならない)
+4. `ADMIN_NOTIFY_EMAIL`宛に、注文ID・商品・注文者・数量・備考・添付ファイル名を含む新規注文通知メールを送信
+5. `customerEmail`宛に、注文を受け付けたこと、注文ID、商品、数量、後ほど支払い用URLを送ることを記載した注文受付メールを送信
+
+2通のメールは独立して送信する。片方が失敗してももう片方の送信は実行し、失敗は注文IDとともにサーバーログへ記録する。SMTP未設定時は両方ともログ出力のみでスキップする。
 
 ---
 
@@ -522,7 +524,7 @@
 ### 3.15 GET /products/:id/image — 商品画像取得
 
 - 認証: 不要
-- 登録済み画像のバイナリを、保存された`image_mime_type`を`Content-Type`として返す。
+- 登録済み画像のバイナリを、保存された`image_mime_type`を`Content-Type`として返す。過去にHEIC/HEIFのまま保存された画像は、取得時にJPEGへ変換して`image/jpeg`で返す。
 - `Cache-Control: public, max-age=3600`を付与する。JSON一覧の`imageUrl`には更新日時由来の`v`が付くため、画像差し替え後は別URLとして再取得される。
 - 商品が無い場合、または商品はあるが画像未登録の場合は404。
 
@@ -532,7 +534,8 @@
 
 - 認証: 要
 - Content-Type: `multipart/form-data`
-- フィールド名`image`で画像を1点送る。MIMEタイプが`image/*`であること、ファイルサイズが5MB以下であることを検証する。
+- フィールド名`image`で画像を1点送る。MIMEタイプが`image/*`であること(HEIC/HEIFは拡張子判定も許可)、ファイルサイズが5MB以下であることを検証する。
+- HEIC/HEIF画像はブラウザで表示できるよう、アップロード時にJPEG(品質90)へ変換してからDBへ保存する。変換できないファイルは400を返す。
 - 既存画像がある場合はDBの`products.image_data`・`image_mime_type`を上書きする。
 - レスポンス200は更新後の商品オブジェクト(3.1と同形式)。ファイル欠落・画像以外は400、商品未検出は404、5MB超過はMulterのファイルサイズ超過エラーになる。
 
@@ -541,7 +544,7 @@
 ### 3.17 GET /product-categories/:id/image — カテゴリ画像取得
 
 - 認証: 不要
-- 3.15と同じ方式でカテゴリ画像を返す。カテゴリ未検出または画像未登録は404。
+- 3.15と同じ方式でカテゴリ画像を返す。過去にHEIC/HEIFのまま保存された画像はJPEGへ変換して返す。カテゴリ未検出または画像未登録は404。
 
 ---
 
@@ -549,7 +552,8 @@
 
 - 認証: 要
 - Content-Type: `multipart/form-data`
-- フィールド名`image`、MIMEタイプ`image/*`、最大5MB。DBの`product_categories.image_data`・`image_mime_type`を上書きする。
+- フィールド名`image`、MIMEタイプ`image/*`(HEIC/HEIFは拡張子判定も許可)、最大5MB。DBの`product_categories.image_data`・`image_mime_type`を上書きする。
+- HEIC/HEIF画像は商品画像と同じくJPEGへ変換して保存する。変換できないファイルは400を返す。
 - レスポンス200は更新後カテゴリ(3.10の要素と同形式)。ファイル欠落・画像以外は400、カテゴリ未検出は404。
 
 > 画像作成・更新API(`POST/PATCH`)はJSONのマスタ項目のみを扱い、画像は上記`PUT`で別送する。管理画面はマスタ保存成功後、画像が選択されている場合だけ続けて`PUT`を実行する。画像を選択しなければ既存画像は維持される。
@@ -576,11 +580,12 @@
 | `.png` | `image/png` |
 | `.gif` | `image/gif` |
 | `.webp` | `image/webp` |
+| `.heic`, `.heif` | JPEGへ変換して`image/jpeg` |
 | `.pdf` | `application/pdf` |
 | その他 | `application/octet-stream` |
 
 - `Content-Disposition: inline`、`Cache-Control: private, no-store`、`X-Content-Type-Options: nosniff`を付ける。
-- フロントエンドはカスタム認証ヘッダー付きでBlobとして取得し、一時Blob URLを画像/PDFプレビューとファイルを開くリンクに利用する。
+- フロントエンドはカスタム認証ヘッダー付きでBlobとして取得し、一時Blob URLを画像/PDFプレビューとファイルを開くリンクに利用する。新規注文のHEIC/HEIFはアップロード時にJPEGへ変換して保存し、過去にHEIC/HEIFのまま保存された添付も取得時にJPEGへ変換する。
 - 注文未検出、範囲外の`fileIndex`、ディスク上のファイル欠落は404「添付ファイルが見つかりません」。整数でない`fileIndex`は400。
 - DBから取得した相対パスを`UPLOAD_DIR`配下の絶対パスへ解決し、保存領域外を指すパスは読み込まない。
 

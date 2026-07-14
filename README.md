@@ -47,7 +47,8 @@ npm run start:dev
 - `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASSWORD` / `DB_NAME` … PostgreSQL接続情報。`docker compose up -d db` をそのまま使うなら既定値のままでOK
 - `ADMIN_USER_ID` / `ADMIN_PASSWORD` … 管理画面ログイン用のユーザーID・パスワード。パスワードはランダムな文字列にしてください
 - `ADMIN_NOTIFY_EMAIL` … 新規注文が入ったときに通知を受け取るメールアドレス
-- `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` … メール送信用。未設定でも動作しますが、メールは飛ばずログに出るだけになります
+- `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` / `SMTP_REQUIRE_TLS` / `SMTP_USER` / `SMTP_PASS` … メール送信用。未設定でも動作しますが、メールは飛ばずログに出るだけになります
+- Gmailでの実送信とMailpitでのローカル確認は`docs/email-delivery.md`を参照
 
 ### 3. frontend
 
@@ -63,7 +64,7 @@ npm run dev
 ## 注文が入ってからの流れ
 
 1. お客様が商品を選び、フォームとデザインファイルを送信
-2. `ADMIN_NOTIFY_EMAIL` 宛に注文内容の通知メールが届く
+2. `ADMIN_NOTIFY_EMAIL` 宛に注文内容の通知メールが届き、同時にお客様にも注文ID付きの受付完了メールが届く
 3. 管理者が `/admin` にアクセスし、`ADMIN_USER_ID` / `ADMIN_PASSWORD` でログインして注文一覧を確認・検索
 4. 支払いリンク(Stripeの支払いリンク、PayPal.me、銀行振込の案内ページなど何でも可)を該当注文の欄に貼って送信
 5. お客様にお支払い案内メールが自動送信される

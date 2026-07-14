@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import { ProductEntity } from './product.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { ImageProcessingService } from '../image/image-processing.service';
 
 export interface ProductRecord {
   id: string;
@@ -34,6 +35,7 @@ export class ProductsService {
   constructor(
     @InjectRepository(ProductEntity)
     private readonly productsRepository: Repository<ProductEntity>,
+    private readonly imageProcessingService: ImageProcessingService,
   ) {}
 
   async findAll(): Promise<ProductRecord[]> {
@@ -62,17 +64,26 @@ export class ProductsService {
     if (!entity.imageData || !entity.imageMimeType) {
       throw new NotFoundException('商品画像が登録されていません');
     }
-    return { data: entity.imageData, mimeType: entity.imageMimeType };
+    const image = await this.imageProcessingService.normalize(
+      entity.imageData,
+      entity.imageMimeType,
+    );
+    return { data: image.data, mimeType: image.mimeType };
   }
 
   async updateImage(id: string, file?: Express.Multer.File): Promise<ProductRecord> {
-    if (!file || !file.mimetype.startsWith('image/')) {
+    if (
+      !file ||
+      (!file.mimetype.startsWith('image/') &&
+        !this.imageProcessingService.isHeic(file.mimetype, file.originalname))
+    ) {
       throw new BadRequestException('画像ファイルを選択してください');
     }
     const entity = await this.productsRepository.findOne({ where: { id } });
     if (!entity) throw new NotFoundException('指定された商品が見つかりません');
-    entity.imageData = file.buffer;
-    entity.imageMimeType = file.mimetype;
+    const image = await this.imageProcessingService.normalizeUpload(file);
+    entity.imageData = image.data;
+    entity.imageMimeType = image.mimeType;
     await this.productsRepository.save(entity);
     const saved = await this.productsRepository.findOne({
       where: { id },
