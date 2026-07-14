@@ -1,17 +1,20 @@
-import { createContext, ReactNode, useState } from 'react';
-import type { AdminCredentials } from '@/api';
+import { createContext, ReactNode, useState } from "react";
+import type { AdminCredentials } from "@/api";
 
-const ADMIN_CREDENTIALS_STORAGE_KEY = 'paper-order-admin-credentials';
+const ADMIN_CREDENTIALS_STORAGE_KEY = "haguruma-store-portal-admin-credentials";
 
 function loadStoredCredentials(): AdminCredentials | null {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === "undefined") return null;
 
   try {
     const stored = window.sessionStorage.getItem(ADMIN_CREDENTIALS_STORAGE_KEY);
     if (!stored) return null;
 
     const credentials = JSON.parse(stored) as Partial<AdminCredentials>;
-    if (typeof credentials.id !== 'string' || typeof credentials.password !== 'string') {
+    if (
+      typeof credentials.id !== "string" ||
+      typeof credentials.password !== "string"
+    ) {
       window.sessionStorage.removeItem(ADMIN_CREDENTIALS_STORAGE_KEY);
       return null;
     }
@@ -24,11 +27,14 @@ function loadStoredCredentials(): AdminCredentials | null {
 }
 
 function storeCredentials(credentials: AdminCredentials | null) {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") return;
 
   try {
     if (credentials) {
-      window.sessionStorage.setItem(ADMIN_CREDENTIALS_STORAGE_KEY, JSON.stringify(credentials));
+      window.sessionStorage.setItem(
+        ADMIN_CREDENTIALS_STORAGE_KEY,
+        JSON.stringify(credentials),
+      );
     } else {
       window.sessionStorage.removeItem(ADMIN_CREDENTIALS_STORAGE_KEY);
     }
@@ -43,12 +49,16 @@ interface AdminAuthContextValue {
   logout: () => void;
 }
 
-export const AdminAuthContext = createContext<AdminAuthContextValue | null>(null);
+export const AdminAuthContext = createContext<AdminAuthContextValue | null>(
+  null,
+);
 
 // 管理画面配下の複数ページでログイン状態を共有し、同一タブのリロード時は
 // sessionStorageから復元する。ID・パスワードの検証自体はAdminGateが担当する。
 export function AdminAuthProvider({ children }: { children: ReactNode }) {
-  const [credentials, setCredentials] = useState<AdminCredentials | null>(loadStoredCredentials);
+  const [credentials, setCredentials] = useState<AdminCredentials | null>(
+    loadStoredCredentials,
+  );
 
   const login = (creds: AdminCredentials) => {
     storeCredentials(creds);

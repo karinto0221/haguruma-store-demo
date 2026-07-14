@@ -1,6 +1,9 @@
-import type { CategoryCardProps } from '../type';
+import type { CategoryCardProps } from "../type";
 
-export default function CategoryCard({ category, onSelect }: CategoryCardProps) {
+export default function CategoryCard({
+  category,
+  onSelect,
+}: CategoryCardProps) {
   return (
     <button className="catalog-card" onClick={() => onSelect(category.id)}>
       <div className="catalog-image-wrap">

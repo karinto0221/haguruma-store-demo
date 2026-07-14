@@ -7,7 +7,7 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 Instagramリール経由のアクセス向けの、紙製品(名刺・封筒・ポストカード等)のシンプルな注文受付サイト。決済自体は行わず、管理者が注文内容を確認して支払いリンク(Stripe/PayPal/銀行振込など)を貼り付けて送信するところまでを担当する。
 
 ```
-paper-order-site/
+haguruma-store-portal/
 ├── backend/   NestJS API (商品API・注文受付・ファイル保存・メール通知・DB)
 ├── frontend/  React (Vite) の注文フォーム + 簡易管理画面
 └── docs/      画面設計書・DB設計書・API定義書(実装の動きを正として記述)
