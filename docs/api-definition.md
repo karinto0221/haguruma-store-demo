@@ -524,7 +524,7 @@
 ### 3.15 GET /products/:id/image — 商品画像取得
 
 - 認証: 不要
-- 登録済み画像のバイナリを、保存された`image_mime_type`を`Content-Type`として返す。過去にHEIC/HEIFのまま保存された画像は、取得時にJPEGへ変換して`image/jpeg`で返す。
+- 登録済み画像のバイナリを、保存された`image_mime_type`を`Content-Type`として返す。過去にHEIC/HEIFのまま保存された画像は、初回取得時にJPEGへ変換して`image/jpeg`で返し、変換結果をDBへ保存する。以降の取得では保存済みJPEGをそのまま返す。
 - `Cache-Control: public, max-age=3600`を付与する。JSON一覧の`imageUrl`には更新日時由来の`v`が付くため、画像差し替え後は別URLとして再取得される。
 - 商品が無い場合、または商品はあるが画像未登録の場合は404。
 
@@ -544,7 +544,7 @@
 ### 3.17 GET /product-categories/:id/image — カテゴリ画像取得
 
 - 認証: 不要
-- 3.15と同じ方式でカテゴリ画像を返す。過去にHEIC/HEIFのまま保存された画像はJPEGへ変換して返す。カテゴリ未検出または画像未登録は404。
+- 3.15と同じ方式でカテゴリ画像を返す。過去にHEIC/HEIFのまま保存された画像は初回取得時にJPEGへ変換してDBへ保存する。カテゴリ未検出または画像未登録は404。
 
 ---
 

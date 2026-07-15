@@ -58,6 +58,12 @@ export class ProductCategoriesService {
       entity.imageData,
       entity.imageMimeType,
     );
+    if (image.mimeType !== entity.imageMimeType) {
+      await this.repository.update(id, {
+        imageData: image.data,
+        imageMimeType: image.mimeType,
+      });
+    }
     return { data: image.data, mimeType: image.mimeType };
   }
 
