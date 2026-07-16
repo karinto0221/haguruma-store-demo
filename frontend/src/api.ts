@@ -1,4 +1,6 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL || '/api'
+).replace(/\/$/, '');
 
 export interface Product {
   id: string;
@@ -12,7 +14,8 @@ export interface Product {
 
 function resolveAssetUrl(url?: string): string | undefined {
   if (!url) return undefined;
-  return new URL(url, API_BASE_URL).toString();
+  if (/^https?:\/\//i.test(url)) return url;
+  return `${API_BASE_URL}${url.startsWith('/') ? url : `/${url}`}`;
 }
 
 function normalizeProduct(product: Product): Product {

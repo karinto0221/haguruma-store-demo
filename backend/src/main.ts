@@ -5,6 +5,9 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // 外部公開するHTTP APIを/api配下へ集約し、Nginxはパスごとの知識を持たない。
+  app.setGlobalPrefix('api');
+
   app.enableCors({
     origin: process.env.FRONTEND_ORIGIN || 'http://localhost:5173',
   });

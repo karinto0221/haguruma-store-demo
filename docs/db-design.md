@@ -45,7 +45,7 @@
 
 - 主キー制約: `PK_product_categories_id` (id)
 - 初期データ(9件、`id`は投入順の連番): 封筒・袋 / パッケージ・箱・フォルダー / 名刺 / カード・ペーパー / 冊子・ブックレット・ZINE / ポケットフォルダー / ペーパータグ・下げ札 / シール・ステッカー・商品ラベル / ラッピングペーパー・薄葉紙
-- カテゴリの追加・編集・削除は管理画面(`/admin/master/product-categories`)から`GET/POST/PATCH/DELETE /product-categories`経由で行える(API定義書3.10〜3.13参照)。参照している商品が残っている状態での削除は外部キー制約により失敗する。
+- カテゴリの追加・編集・削除は管理画面(`/admin/master/product-categories`)から`GET/POST/PATCH/DELETE /api/product-categories`経由で行える(API定義書3.10〜3.13参照)。参照している商品が残っている状態での削除は外部キー制約により失敗する。
 
 ### 2.2 products(商品マスタ)
 
@@ -63,8 +63,8 @@
 
 - 主キー制約: `PK_0806c755e0aca124e67c0cf6d7d` (id)
 - 外部キー制約: `FK_products_product_category_id` (product_category_id → product_categories.id, ON DELETE RESTRICT, ON UPDATE NO ACTION)
-- 商品の追加・編集・削除は管理画面(`/admin/master/products`)から`GET/POST/PATCH/DELETE /products`経由で行える(API定義書3.1、3.7〜3.9参照)。`id`は作成後変更不可。参照している注文が残っている状態での削除は外部キー制約により失敗する。
-- `GET /products`のAPIレスポンスには`productCategoryId`・`productCategoryName`(`product_categories`とのJOIN結果)が含まれる。このエンドポイントはお客様向け(商品選択画面)と管理画面(商品マスタ一覧)の両方から共通で使われている。
+- 商品の追加・編集・削除は管理画面(`/admin/master/products`)から`GET/POST/PATCH/DELETE /api/products`経由で行える(API定義書3.1、3.7〜3.9参照)。`id`は作成後変更不可。参照している注文が残っている状態での削除は外部キー制約により失敗する。
+- `GET /api/products`のAPIレスポンスには`productCategoryId`・`productCategoryName`(`product_categories`とのJOIN結果)が含まれる。このエンドポイントはお客様向け(商品選択画面)と管理画面(商品マスタ一覧)の両方から共通で使われている。
 
 ### 2.3 orders(注文)
 
@@ -98,7 +98,7 @@
 | ------------------- | -------------- | ---------------------------------------------------------------------------------------------------------- |
 | `new`               | 新規注文       | 注文受付直後の初期状態                                                                                     |
 | `reviewing`         | 内容確認中     | 管理者が内容確認中であることを手動でマークした状態                                                         |
-| `payment_link_sent` | メール送信済み | 支払いリンク送信済み(`POST /orders/:id/send-payment-link`実行後に自動遷移。管理画面から手動でもセット可能) |
+| `payment_link_sent` | メール送信済み | 支払いリンク送信済み(`POST /api/orders/:id/send-payment-link`実行後に自動遷移。管理画面から手動でもセット可能) |
 | `completed`         | 完了           | 管理者が注文対応完了として手動で設定した状態。注文一覧では既定で除外される                                 |
 | `cancelled`         | キャンセル     | 管理者が手動でキャンセル扱いにした状態                                                                     |
 

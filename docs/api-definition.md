@@ -6,8 +6,9 @@
 
 ### 1.1 ベースURL
 
-- ローカル: `http://localhost:3000`(`.env`の`PORT`で変更可)
-- グローバルプレフィックス(`/api`等)は設定されていない。各コントローラーの`@Controller()`パスがそのままURLになる。
+- ローカル: `http://localhost:3000/api`(`.env`の`PORT`で変更可)
+- `main.ts`でグローバルプレフィックス`/api`を設定している。各コントローラーの`@Controller()`パスはこの配下に置かれる。
+- EC2のNginxは`location /api/`を一律でバックエンドへ転送する。API追加時にパスごとのNginx設定は不要。
 
 ### 1.2 認証方式
 
@@ -19,7 +20,7 @@
 | `x-admin-password` | 環境変数`ADMIN_PASSWORD`と完全一致する必要がある |
 
 - トークン発行の仕組みは無い(JWTやセッションIDは発行しない)。管理者向けエンドポイントを叩くたびに、毎回このヘッダーを送る(Basic認証に近いステートレス方式)。
-- `POST /admin/login`(3.6)は、このヘッダーが正しいかどうかを確認するだけの専用エンドポイント。フロントエンドはログイン画面でこれを呼び、成功したらヘッダー値をメモリ上に保持して以降のリクエストに使い回す(サーバー側に状態は残らない)。
+- `POST /api/admin/login`(3.6)は、このヘッダーが正しいかどうかを確認するだけの専用エンドポイント。フロントエンドはログイン画面でこれを呼び、成功したらヘッダー値をメモリ上に保持して以降のリクエストに使い回す(サーバー側に状態は残らない)。
 - いずれか不一致・未設定の場合、`401 Unauthorized`を返す(詳細は3.3)。
 - お客様向けエンドポイント(カテゴリ一覧、商品一覧・詳細・画像取得、注文作成)は認証不要。
 
@@ -45,7 +46,7 @@
 | 一意制約・外部キー制約違反(商品ID重複、参照が残っている状態での削除など) | 409 | `{"message":"このIDは既に使用されています","error":"Conflict","statusCode":409}` |
 | 想定外の例外 | 500 | `{"statusCode":500,"message":"Internal server error"}` |
 
-> **メール送信失敗時の挙動**: `POST /orders`は注文保存後に管理者向け新規注文通知とお客様向け注文受付通知を独立して送信する。どちらか、または両方のSMTP送信が失敗しても失敗内容をサーバーログへ記録し、保存済み注文の`orderId`を含む201レスポンスを返す。一方、`POST /orders/:id/send-payment-link`はメール送信失敗時に500を返し、ステータスを`payment_link_sent`に更新しない。
+> **メール送信失敗時の挙動**: `POST /api/orders`は注文保存後に管理者向け新規注文通知とお客様向け注文受付通知を独立して送信する。どちらか、または両方のSMTP送信が失敗しても失敗内容をサーバーログへ記録し、保存済み注文の`orderId`を含む201レスポンスを返す。一方、`POST /api/orders/:id/send-payment-link`はメール送信失敗時に500を返し、ステータスを`payment_link_sent`に更新しない。
 
 ---
 
@@ -53,32 +54,32 @@
 
 | # | メソッド | パス | 概要 | 認証 |
 |---|---|---|---|---|
-| 1 | GET | `/products` | 商品一覧取得(カテゴリ情報を含む) | 不要 |
-| 2 | POST | `/orders` | 注文作成 | 不要 |
-| 3 | GET | `/orders` | 注文一覧取得・検索 | 要 |
-| 4 | PATCH | `/orders/:id/status` | 注文ステータス変更 | 要 |
-| 5 | POST | `/orders/:id/send-payment-link` | 支払いリンク送信 | 要 |
-| 6 | POST | `/admin/login` | 管理者ログイン確認 | 要 |
-| 7 | POST | `/products` | 商品を新規作成(マスタ管理) | 要 |
-| 8 | PATCH | `/products/:id` | 商品を更新(マスタ管理) | 要 |
-| 9 | DELETE | `/products/:id` | 商品を削除(マスタ管理) | 要 |
-| 10 | GET | `/product-categories` | 商品カテゴリ一覧取得(購入画面・マスタ管理共通) | 不要 |
-| 11 | POST | `/product-categories` | 商品カテゴリを新規作成(マスタ管理) | 要 |
-| 12 | PATCH | `/product-categories/:id` | 商品カテゴリを更新(マスタ管理) | 要 |
-| 13 | DELETE | `/product-categories/:id` | 商品カテゴリを削除(マスタ管理) | 要 |
-| 14 | GET | `/products/:id` | 商品詳細取得 | 不要 |
-| 15 | GET | `/products/:id/image` | 商品画像取得 | 不要 |
-| 16 | PUT | `/products/:id/image` | 商品画像登録・差し替え | 要 |
-| 17 | GET | `/product-categories/:id/image` | カテゴリ画像取得 | 不要 |
-| 18 | PUT | `/product-categories/:id/image` | カテゴリ画像登録・差し替え | 要 |
-| 19 | GET | `/orders/:id` | 注文詳細取得 | 要 |
-| 20 | GET | `/orders/:id/files/:fileIndex` | 注文添付ファイル取得 | 要 |
+| 1 | GET | `/api/products` | 商品一覧取得(カテゴリ情報を含む) | 不要 |
+| 2 | POST | `/api/orders` | 注文作成 | 不要 |
+| 3 | GET | `/api/orders` | 注文一覧取得・検索 | 要 |
+| 4 | PATCH | `/api/orders/:id/status` | 注文ステータス変更 | 要 |
+| 5 | POST | `/api/orders/:id/send-payment-link` | 支払いリンク送信 | 要 |
+| 6 | POST | `/api/admin/login` | 管理者ログイン確認 | 要 |
+| 7 | POST | `/api/products` | 商品を新規作成(マスタ管理) | 要 |
+| 8 | PATCH | `/api/products/:id` | 商品を更新(マスタ管理) | 要 |
+| 9 | DELETE | `/api/products/:id` | 商品を削除(マスタ管理) | 要 |
+| 10 | GET | `/api/product-categories` | 商品カテゴリ一覧取得(購入画面・マスタ管理共通) | 不要 |
+| 11 | POST | `/api/product-categories` | 商品カテゴリを新規作成(マスタ管理) | 要 |
+| 12 | PATCH | `/api/product-categories/:id` | 商品カテゴリを更新(マスタ管理) | 要 |
+| 13 | DELETE | `/api/product-categories/:id` | 商品カテゴリを削除(マスタ管理) | 要 |
+| 14 | GET | `/api/products/:id` | 商品詳細取得 | 不要 |
+| 15 | GET | `/api/products/:id/image` | 商品画像取得 | 不要 |
+| 16 | PUT | `/api/products/:id/image` | 商品画像登録・差し替え | 要 |
+| 17 | GET | `/api/product-categories/:id/image` | カテゴリ画像取得 | 不要 |
+| 18 | PUT | `/api/product-categories/:id/image` | カテゴリ画像登録・差し替え | 要 |
+| 19 | GET | `/api/orders/:id` | 注文詳細取得 | 要 |
+| 20 | GET | `/api/orders/:id/files/:fileIndex` | 注文添付ファイル取得 | 要 |
 
 ---
 
 ## 3. エンドポイント詳細
 
-### 3.1 GET /products — 商品一覧取得
+### 3.1 GET /api/products — 商品一覧取得
 
 - 認証: 不要(お客様向け・管理画面向け共通。カテゴリ名は非公開情報ではないため認証なしで返す)
 - リクエストパラメータ: 無し
@@ -113,7 +114,7 @@
 
 ---
 
-### 3.2 POST /orders — 注文作成
+### 3.2 POST /api/orders — 注文作成
 
 - 認証: 不要
 - Content-Type: `multipart/form-data`
@@ -159,7 +160,7 @@
 
 ---
 
-### 3.3 GET /orders — 注文一覧取得・検索
+### 3.3 GET /api/orders — 注文一覧取得・検索
 
 - 認証: 要(`x-admin-id` / `x-admin-password`)
 
@@ -226,7 +227,7 @@
 
 ---
 
-### 3.4 PATCH /orders/:id/status — 注文ステータス変更
+### 3.4 PATCH /api/orders/:id/status — 注文ステータス変更
 
 - 認証: 要(`x-admin-id` / `x-admin-password`)
 
@@ -262,7 +263,7 @@
 
 ---
 
-### 3.5 POST /orders/:id/send-payment-link — 支払いリンク送信
+### 3.5 POST /api/orders/:id/send-payment-link — 支払いリンク送信
 
 - 認証: 要(`x-admin-id` / `x-admin-password`)
 
@@ -303,7 +304,7 @@
 
 ---
 
-### 3.6 POST /admin/login — 管理者ログイン確認
+### 3.6 POST /api/admin/login — 管理者ログイン確認
 
 - 認証: 要(`x-admin-id` / `x-admin-password`)
 - リクエストボディ: 無し(ヘッダーのみで判定)
@@ -324,7 +325,7 @@
 
 ---
 
-### 3.7 POST /products — 商品を新規作成
+### 3.7 POST /api/products — 商品を新規作成
 
 - 認証: 要(`x-admin-id` / `x-admin-password`)
 
@@ -365,7 +366,7 @@
 
 ---
 
-### 3.8 PATCH /products/:id — 商品を更新
+### 3.8 PATCH /api/products/:id — 商品を更新
 
 - 認証: 要(`x-admin-id` / `x-admin-password`)
 
@@ -410,7 +411,7 @@
 
 ---
 
-### 3.9 DELETE /products/:id — 商品を削除
+### 3.9 DELETE /api/products/:id — 商品を削除
 
 - 認証: 要(`x-admin-id` / `x-admin-password`)
 
@@ -426,7 +427,7 @@
 
 ---
 
-### 3.10 GET /product-categories — 商品カテゴリ一覧取得
+### 3.10 GET /api/product-categories — 商品カテゴリ一覧取得
 
 - 認証: 不要(購入画面と管理画面で共通利用)
 - リクエストパラメータ: 無し
@@ -445,7 +446,7 @@
 
 ---
 
-### 3.11 POST /product-categories — 商品カテゴリを新規作成
+### 3.11 POST /api/product-categories — 商品カテゴリを新規作成
 
 - 認証: 要(`x-admin-id` / `x-admin-password`)
 
@@ -476,7 +477,7 @@
 
 ---
 
-### 3.12 PATCH /product-categories/:id — 商品カテゴリを更新
+### 3.12 PATCH /api/product-categories/:id — 商品カテゴリを更新
 
 - 認証: 要(`x-admin-id` / `x-admin-password`)
 
@@ -500,7 +501,7 @@
 
 ---
 
-### 3.13 DELETE /product-categories/:id — 商品カテゴリを削除
+### 3.13 DELETE /api/product-categories/:id — 商品カテゴリを削除
 
 - 認証: 要(`x-admin-id` / `x-admin-password`)
 
@@ -516,7 +517,7 @@
 
 ---
 
-### 3.14 GET /products/:id — 商品詳細取得
+### 3.14 GET /api/products/:id — 商品詳細取得
 
 - 認証: 不要
 - パスの`id`に一致する商品1件を返す。レスポンス形式は3.1の配列要素と同じ。
@@ -524,7 +525,7 @@
 
 ---
 
-### 3.15 GET /products/:id/image — 商品画像取得
+### 3.15 GET /api/products/:id/image — 商品画像取得
 
 - 認証: 不要
 - 登録済み画像のバイナリを、保存された`image_mime_type`を`Content-Type`として返す。過去にHEIC/HEIFのまま保存された画像は、初回取得時にJPEGへ変換して`image/jpeg`で返し、変換結果をDBへ保存する。以降の取得では保存済みJPEGをそのまま返す。
@@ -533,7 +534,7 @@
 
 ---
 
-### 3.16 PUT /products/:id/image — 商品画像登録・差し替え
+### 3.16 PUT /api/products/:id/image — 商品画像登録・差し替え
 
 - 認証: 要
 - Content-Type: `multipart/form-data`
@@ -544,14 +545,14 @@
 
 ---
 
-### 3.17 GET /product-categories/:id/image — カテゴリ画像取得
+### 3.17 GET /api/product-categories/:id/image — カテゴリ画像取得
 
 - 認証: 不要
 - 3.15と同じ方式でカテゴリ画像を返す。過去にHEIC/HEIFのまま保存された画像は初回取得時にJPEGへ変換してDBへ保存する。カテゴリ未検出または画像未登録は404。
 
 ---
 
-### 3.18 PUT /product-categories/:id/image — カテゴリ画像登録・差し替え
+### 3.18 PUT /api/product-categories/:id/image — カテゴリ画像登録・差し替え
 
 - 認証: 要
 - Content-Type: `multipart/form-data`
@@ -563,7 +564,7 @@
 
 ---
 
-### 3.19 GET /orders/:id — 注文詳細取得
+### 3.19 GET /api/orders/:id — 注文詳細取得
 
 - 認証: 要(`x-admin-id` / `x-admin-password`)
 - パスの`id`に一致する注文1件を返す。レスポンス形式は3.3の配列要素と同じ。
@@ -571,7 +572,7 @@
 
 ---
 
-### 3.20 GET /orders/:id/files/:fileIndex — 注文添付ファイル取得
+### 3.20 GET /api/orders/:id/files/:fileIndex — 注文添付ファイル取得
 
 - 認証: 要(`x-admin-id` / `x-admin-password`)
 - `fileIndex`は`fileNames` / `filePaths`配列の0始まりインデックス。注文詳細画面は各`fileNames`に対応する番号を指定する。
@@ -600,5 +601,5 @@
 
 - ログアウトAPI・トークンのリフレッシュ(ログアウトはフロント側でReact stateと`sessionStorage`の認証情報を破棄するだけで、サーバー側に伝えるAPI呼び出しは無い。そもそもサーバー側にセッション概念が無いため不要)
 - 注文の削除API
-- 商品カテゴリの個別JSON取得API(`GET /product-categories/:id`は無い。編集画面は取得済み一覧から該当行を渡す)
+- 商品カテゴリの個別JSON取得API(`GET /api/product-categories/:id`は無い。編集画面は取得済み一覧から該当行を渡す)
 - 登録済みの商品・カテゴリ画像を削除して未登録状態に戻すAPI(画像の差し替えのみ実装)

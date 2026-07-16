@@ -180,9 +180,9 @@ docker compose logs --tail=100 backend
 docker compose logs --tail=100 frontend
 docker compose logs --tail=100 db
 curl -I http://127.0.0.1:8080
-curl http://127.0.0.1:3000/products
+curl http://127.0.0.1:3000/api/products
 curl -I http://<Elastic-IP>
-curl http://<Elastic-IP>/products
+curl http://<Elastic-IP>/api/products
 ```
 
 ブラウザでは変更箇所に加え、次を回帰確認する。
@@ -205,7 +205,7 @@ curl http://<Elastic-IP>/products
 | APIが失敗 | backendログ、`FRONTEND_ORIGIN`、DB接続値 |
 | DBエラー | dbログ、DB名・ユーザー・パスワードの一致 |
 | `/admin`リロードで404 | `frontend/nginx.conf`の`try_files` |
-| 画像だけ表示されない | `VITE_API_BASE_URL`、Nginxの`/products`・`/product-categories`経路 |
+| API・画像が表示されない | `VITE_API_BASE_URL`に`/api`が含まれるか、Nginxの`/api/`経路 |
 | Nginx設定エラー | `sudo nginx -t`のファイル名と行番号、壊れたシンボリックリンク |
 
 ## 11. ロールバックの考え方

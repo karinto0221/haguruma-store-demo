@@ -121,10 +121,7 @@ ports:
 Nginxはブラウザの接続を最初に受け、URLに応じて内部サービスへ中継する。これをリバースプロキシと呼ぶ。
 
 ```text
-/products             -> backend
-/product-categories   -> backend
-/orders               -> backend
-/admin/login          -> backend
+/api/*                -> backend
 それ以外               -> frontend
 ```
 
@@ -324,7 +321,7 @@ docker compose exec backend \
 ```bash
 docker compose ps
 docker compose logs --tail=100 backend
-curl http://127.0.0.1:3000/products
+curl http://127.0.0.1:3000/api/products
 curl -I http://127.0.0.1:8080
 sudo nginx -t
 sudo systemctl status nginx

@@ -189,8 +189,10 @@ nano frontend/.env
 ```
 
 ```dotenv
-VITE_API_BASE_URL=http://203.0.113.10
+VITE_API_BASE_URL=/api
 ```
+
+`VITE_API_BASE_URL`は同一オリジンの`/api`を指定する。ブラウザは現在表示しているIP・ドメインの`/api`へ接続するため、Elastic IPへの変更やHTTPS・ドメイン導入時もこの値を変更する必要はない。ローカル開発時はVite、EC2ではホストNginxが`/api`をバックエンドへ転送する。
 
 Viteの環境変数はfrontendのビルド時にJavaScriptへ埋め込まれる。変更時はコンテナの再起動だけではなく再ビルドする。
 
@@ -299,22 +301,8 @@ server {
 
     client_max_body_size 30M;
 
-    location /products {
-        proxy_pass http://haguruma_backend;
-        include proxy_params;
-    }
-
-    location /product-categories {
-        proxy_pass http://haguruma_backend;
-        include proxy_params;
-    }
-
-    location /orders {
-        proxy_pass http://haguruma_backend;
-        include proxy_params;
-    }
-
-    location = /admin/login {
+    # APIはすべて/api配下に集約する。新しいAPIを追加してもNginxの変更は不要。
+    location /api/ {
         proxy_pass http://haguruma_backend;
         include proxy_params;
     }
@@ -345,7 +333,7 @@ EC2内部の接続を先に確認する。
 
 ```bash
 curl -I http://127.0.0.1:8080
-curl http://127.0.0.1:3000/products
+curl http://127.0.0.1:3000/api/products
 curl -I http://127.0.0.1:8080/admin
 ```
 
@@ -353,7 +341,7 @@ Nginx経由を確認する。
 
 ```bash
 curl -I http://203.0.113.10
-curl http://203.0.113.10/products
+curl http://203.0.113.10/api/products
 ```
 
 ブラウザで次を確認する。
