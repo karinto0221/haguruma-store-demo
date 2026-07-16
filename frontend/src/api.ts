@@ -129,6 +129,33 @@ export interface OrderRecord {
   createdAt: string;
 }
 
+export interface OrderAnalysisMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface OrderAnalysisResult {
+  answer: string;
+  analyzedOrderCount: number;
+  matchedOrderCount: number;
+}
+
+export async function analyzeOrdersAdmin(
+  credentials: AdminCredentials,
+  question: string,
+  history: OrderAnalysisMessage[],
+): Promise<OrderAnalysisResult> {
+  const res = await fetch(`${API_BASE_URL}/order-analysis`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...adminHeaders(credentials) },
+    body: JSON.stringify({ question, history }),
+  });
+  if (!res.ok) {
+    throw new Error(await parseErrorMessage(res, '注文分析に失敗しました'));
+  }
+  return res.json();
+}
+
 export interface OrdersSearchFilter {
   status?: OrderStatus | '';
   keyword?: string;

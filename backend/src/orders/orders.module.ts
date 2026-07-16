@@ -19,5 +19,6 @@ import { ImageProcessingModule } from '../image/image-processing.module';
   ],
   controllers: [OrdersController],
   providers: [OrdersService, OrdersRepository],
+  exports: [OrdersService],
 })
 export class OrdersModule {}

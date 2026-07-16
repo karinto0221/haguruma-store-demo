@@ -12,6 +12,17 @@ export const CURRENT_APP_VERSION = packageJson.version;
 // ユーザーに見える機能追加・修正を行ったら、該当バージョンのchangesへ1項目追加する。
 export const UPDATE_HISTORY: UpdateHistoryEntry[] = [
   {
+    version: '0.3.0',
+    releasedAt: '2026-07-16',
+    summary: '個人情報を除外したAI注文分析機能を追加',
+    changes: [
+      '管理画面に、注文データについて自然な文章で質問できるAI注文分析ページを追加しました。',
+      '外部AIへ送信する注文情報から氏名・連絡先・備考・注文IDなどを除外し、個人情報を含む質問を送信前に拒否するようにしました。',
+      '質問内容に応じて対象注文を先に絞り込み、必要なデータだけをAIで分析するように改善しました。',
+      '公開APIを/api配下へ統一し、サーバー側の振り分け設定をAPI追加のたびに変更しなくてよい構成へ改善しました。',
+    ],
+  },
+  {
     version: '0.2.0',
     releasedAt: '2026-07-15',
     summary: '注文履歴のCSV出力・注文総額保存・更新情報ページを追加',

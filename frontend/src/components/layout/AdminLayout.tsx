@@ -1,6 +1,6 @@
 import { MouseEvent, ReactNode, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ChevronRight, ClipboardList, History, Layers, LogOut } from 'lucide-react';
+import { ChevronRight, ClipboardList, History, Layers, LogOut, Sparkles } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Sidebar,
@@ -44,6 +44,7 @@ function AdminSidebar({ onLogout, children }: AdminLayoutProps) {
   const { state, setOpen } = useSidebar();
   const isOrdersActive =
     location.pathname === '/admin' || location.pathname.startsWith('/admin/orders/');
+  const isOrderAnalysisActive = location.pathname === '/admin/order-analysis';
   const isMasterActive = MASTER_NAV.some((item) => location.pathname === item.to);
   const isUpdatesActive = location.pathname === '/admin/updates';
   const [masterOpen, setMasterOpen] = useState(isMasterActive);
@@ -74,6 +75,19 @@ function AdminSidebar({ onLogout, children }: AdminLayoutProps) {
                   <Link to="/admin">
                     <ClipboardList />
                     <span>注文管理</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isOrderAnalysisActive}
+                  tooltip="AI注文分析"
+                >
+                  <Link to="/admin/order-analysis">
+                    <Sparkles />
+                    <span>AI注文分析</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

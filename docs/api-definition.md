@@ -74,6 +74,7 @@
 | 18 | PUT | `/api/product-categories/:id/image` | カテゴリ画像登録・差し替え | 要 |
 | 19 | GET | `/api/orders/:id` | 注文詳細取得 | 要 |
 | 20 | GET | `/api/orders/:id/files/:fileIndex` | 注文添付ファイル取得 | 要 |
+| 21 | POST | `/api/order-analysis` | 個人情報を除外した注文データのAI分析 | 要 |
 
 ---
 
@@ -592,6 +593,92 @@
 - フロントエンドはカスタム認証ヘッダー付きでBlobとして取得し、一時Blob URLを画像/PDFプレビューとファイルを開くリンクに利用する。新規注文のHEIC/HEIFはアップロード時にJPEGへ変換して保存し、過去にHEIC/HEIFのまま保存された添付も取得時にJPEGへ変換する。
 - 注文未検出、範囲外の`fileIndex`、ディスク上のファイル欠落は404「添付ファイルが見つかりません」。整数でない`fileIndex`は400。
 - DBから取得した相対パスを`UPLOAD_DIR`配下の絶対パスへ解決し、保存領域外を指すパスは読み込まない。
+
+---
+
+### 3.21 POST /api/order-analysis — AI注文分析
+
+- 認証: 要(`x-admin-id` / `x-admin-password`)
+- Content-Type: `application/json`
+- 用途: 管理者の質問からOpenAI Function Callingで検索条件を決定し、DBで対象を絞り込んだ注文データをOpenAI Responses APIへ送って回答を返す。注文やマスタの更新は行わない。
+
+**リクエストボディ**
+
+```json
+{
+  "question": "商品別の注文数と売上を教えて",
+  "history": [
+    { "role": "user", "content": "今月の注文状況をまとめて" },
+    { "role": "assistant", "content": "今月は合計10件です。" }
+  ]
+}
+```
+
+| フィールド | 型 | 必須 | バリデーション | 説明 |
+|---|---|---|---|---|
+| question | string | ○ | 1〜1000文字 | 今回の質問 |
+| history | array | 任意 | 最大8件 | 同一画面内の直近の会話。各要素は`role`と`content`を持つ |
+| history[].role | string | ○ | `user` / `assistant` | 発言者 |
+| history[].content | string | ○ | 1〜4000文字 | 過去の発言本文 |
+
+**外部AIへ送信する注文フィールド**
+
+| フィールド | 説明 |
+|---|---|
+| productName | 商品名 |
+| quantity | 数量 |
+| totalPrice | 注文時点の総額(円) |
+| status | 注文ステータス |
+| orderedAt | 注文日時(ISO 8601) |
+| hasAttachment | 添付ファイルの有無 |
+
+注文ID、氏名、メールアドレス、電話番号、備考、添付ファイル名・内容、支払いURL、保存パスは外部AIへ送信しない。質問・履歴にメールアドレス、電話番号、または取得した注文に登録済みの氏名・メールアドレス・電話番号が含まれる場合も送信前に拒否する。ただし自由文から未知の人名を完全検出する機能ではないため、管理画面上でも個人情報を入力しない運用を案内する。
+
+**分析処理の流れ**
+
+1. 外部AIへ送る前に、質問・履歴に個人情報が含まれないか検査する。
+2. 1回目のResponses APIで`search_analysis_orders`を呼び出させ、日付範囲・ステータス・商品名・添付有無の検索条件を決定する。
+3. バックエンドでAIが返した引数を再検証し、DBへ検索条件として渡す。日付境界は日本時間として扱う。
+4. 該当件数が300件以下の場合だけ、上記の許可済みフィールドを2回目のResponses APIへ渡して分析する。
+5. 301件以上の場合は注文行を外部AIへ渡さず、該当件数と上限だけを渡して、質問を絞るよう回答させる。
+
+Function Callingは検索条件の決定だけに使い、集計方法は2回目のAIが対象注文データから判断する。このため商品別集計、期間比較などを固定の集計APIごとに実装せず、PoCとして分析の柔軟性を維持する。
+
+OpenAIへの通信には公式TypeScript SDKを使用する。`search_analysis_orders`の引数はZod Schemaを正本とし、SDKの`zodResponsesFunction`でOpenAI向けJSON Schemaを生成する。同じZod SchemaでAIが返した引数を実行時にも検証し、tool定義・TypeScript型・バリデーション条件の重複を避ける。日付の前後関係などJSON Schemaだけでは表現しにくい条件も、DB検索前にZodで追加検証する。
+
+**レスポンス 201**
+
+```json
+{
+  "answer": "商品別では、名刺が12個で売上36,000円、封筒が5個で売上25,000円です。",
+  "analyzedOrderCount": 8,
+  "matchedOrderCount": 8
+}
+```
+
+| フィールド | 型 | 説明 |
+|---|---|---|
+| answer | string | AIが生成した日本語の分析結果 |
+| analyzedOrderCount | number | 2回目のAIへ渡した注文件数。上限超過時は0 |
+| matchedOrderCount | number | AIが決めた検索条件でDB検索した該当件数 |
+
+**環境変数**
+
+| 変数 | 必須 | 説明 |
+|---|---|---|
+| `OPENAI_API_KEY` | 利用時必須 | OpenAI APIキー。未設定でもバックエンドは起動するが本APIは503になる |
+| `OPENAI_MODEL` | 任意 | 使用モデル。未設定時は`gpt-5-mini` |
+
+**エラー**
+
+| ケース | ステータス | メッセージ概要 |
+|---|---|---|
+| DTO不正、個人情報を含む質問・履歴 | 400 | 個人情報を除いて質問するよう案内 |
+| 認証失敗 | 401 | 管理者認証エラー |
+| `OPENAI_API_KEY`未設定 | 503 | APIキーの設定を案内 |
+| OpenAI APIの接続失敗・タイムアウト・異常レスポンス | 502 | AIによる分析失敗 |
+
+OpenAI APIへは各HTTP試行30秒のタイムアウトを設定し、一時的な接続エラー・429・5xxは公式SDKで1回だけ再試行する。検索条件決定は最大800出力トークン、回答は最大1500出力トークンとする。すべての呼び出しで`store: false`を指定し、OpenAI側のレスポンス保存を無効にする。APIエラー時に注文データやAPIキーをログへ出力せず、HTTPステータスのみを記録する。
 
 ---
 

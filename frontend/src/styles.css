@@ -859,6 +859,232 @@ body {
   margin-top: 16px;
 }
 
+.order-analysis-page {
+  padding-bottom: calc(80px + env(safe-area-inset-bottom));
+}
+
+.order-analysis-heading .subtitle {
+  margin-bottom: 0;
+}
+
+.order-analysis-privacy {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, #3f6b3a 24%, var(--color-border));
+  border-radius: 12px;
+  background: color-mix(in srgb, #e4ede2 65%, var(--color-surface));
+  color: #365d32;
+}
+
+.order-analysis-privacy > svg {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+}
+
+.order-analysis-privacy strong {
+  display: block;
+  font-size: 13px;
+}
+
+.order-analysis-privacy p {
+  margin: 3px 0 0;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.order-analysis-panel {
+  margin-top: 20px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-surface);
+  box-shadow: 0 12px 36px rgb(50 39 30 / 6%);
+}
+
+.order-analysis-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.order-analysis-toolbar > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.order-analysis-toolbar strong {
+  font-family: var(--font-display);
+  font-size: 15px;
+}
+
+.order-analysis-toolbar span {
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+.order-analysis-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px 18px 0;
+}
+
+.order-analysis-suggestions button {
+  padding: 7px 11px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-background);
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+}
+
+.order-analysis-suggestions button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-border));
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.order-analysis-suggestions button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.order-analysis-conversation {
+  display: flex;
+  min-height: 300px;
+  max-height: min(52vh, 580px);
+  flex-direction: column;
+  gap: 18px;
+  overflow-y: auto;
+  padding: 22px 18px;
+  scroll-behavior: smooth;
+}
+
+.analysis-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: min(780px, 88%);
+}
+
+.analysis-message-user {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.analysis-message-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.analysis-message-user .analysis-message-icon {
+  background: var(--color-ink);
+  color: var(--color-surface);
+}
+
+.analysis-message-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.analysis-message-body {
+  min-width: 0;
+}
+
+.analysis-message-label {
+  display: block;
+  margin: 0 4px 4px;
+  color: var(--color-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.analysis-message-user .analysis-message-label {
+  text-align: right;
+}
+
+.analysis-message-body p {
+  margin: 0;
+  padding: 11px 14px;
+  border-radius: 4px 12px 12px;
+  background: var(--color-background);
+  font-size: 13px;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.analysis-message-user .analysis-message-body p {
+  border-radius: 12px 4px 12px 12px;
+  background: var(--color-accent);
+  color: white;
+}
+
+.analysis-thinking {
+  color: var(--color-muted);
+}
+
+.order-analysis-error {
+  margin: 0 18px 14px;
+}
+
+.order-analysis-composer {
+  padding: 16px 18px;
+  border-top: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-background) 55%, var(--color-surface));
+}
+
+.order-analysis-composer textarea {
+  display: block;
+  width: 100%;
+  min-height: 82px;
+  resize: vertical;
+  padding: 11px 13px;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.order-analysis-composer textarea:focus {
+  border-color: var(--color-accent);
+  outline: 3px solid color-mix(in srgb, var(--color-accent) 18%, transparent);
+}
+
+.order-analysis-composer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.order-analysis-composer-actions > span {
+  color: var(--color-muted);
+  font-size: 10px;
+}
+
 .update-history-page {
   padding-bottom: calc(80px + env(safe-area-inset-bottom));
 }
@@ -1330,6 +1556,70 @@ body {
 }
 
 @media (max-width: 560px) {
+  .order-analysis-page {
+    padding-bottom: calc(140px + env(safe-area-inset-bottom));
+  }
+
+  .order-analysis-privacy {
+    padding: 12px;
+  }
+
+  .order-analysis-toolbar {
+    align-items: flex-start;
+    padding: 14px;
+  }
+
+  .order-analysis-toolbar button {
+    padding-inline: 8px;
+  }
+
+  .order-analysis-suggestions {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 12px 14px 2px;
+    scrollbar-width: none;
+  }
+
+  .order-analysis-suggestions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .order-analysis-suggestions button {
+    flex: 0 0 auto;
+  }
+
+  .order-analysis-conversation {
+    min-height: 260px;
+    max-height: 48vh;
+    padding: 18px 14px;
+  }
+
+  .analysis-message {
+    max-width: 95%;
+  }
+
+  .order-analysis-error {
+    margin-right: 14px;
+    margin-left: 14px;
+  }
+
+  .order-analysis-composer {
+    padding: 14px;
+  }
+
+  .order-analysis-composer-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .order-analysis-composer-actions > span {
+    order: 2;
+  }
+
+  .order-analysis-composer-actions button {
+    width: 100%;
+  }
+
   .update-history-heading {
     align-items: flex-start;
     flex-direction: column;

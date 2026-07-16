@@ -9,6 +9,7 @@ import CategoryProducts from '@/pages/CategoryProducts';
 import ProductDetail from '@/pages/ProductDetail';
 import OrderDetail from '@/pages/OrderDetail';
 import UpdateHistory from '@/pages/UpdateHistory';
+import OrderAnalysis from '@/pages/OrderAnalysis';
 import AdminGate from '@/components/layout/AdminGate';
 
 export default function AppRoutes() {
@@ -22,6 +23,7 @@ export default function AppRoutes() {
       <Route element={<AdminGate />}>
         <Route path="/admin" element={<AdminOrders />} />
         <Route path="/admin/orders/:orderId" element={<OrderDetail />} />
+        <Route path="/admin/order-analysis" element={<OrderAnalysis />} />
         <Route path="/admin/master/product-categories" element={<ProductCategories />} />
         <Route path="/admin/master/products" element={<ProductMaster />} />
         <Route path="/admin/updates" element={<UpdateHistory />} />

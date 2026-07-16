@@ -33,6 +33,34 @@ export interface OrdersFilter {
   dateTo?: string;
 }
 
+export interface AnalysisOrdersFilter {
+  dateFrom?: string;
+  dateTo?: string;
+  statuses?: OrderStatus[];
+  productNames?: string[];
+  hasAttachment?: boolean;
+}
+
+export interface AnalysisOrderRecord {
+  productName: string;
+  quantity: number;
+  totalPrice: number;
+  status: OrderStatus;
+  orderedAt: string;
+  hasAttachment: boolean;
+}
+
+export interface AnalysisOrdersSearchResult {
+  orders: AnalysisOrderRecord[];
+  matchedOrderCount: number;
+}
+
+export interface OrderPersonalValues {
+  customerName: string;
+  customerEmail: string;
+  customerPhone?: string;
+}
+
 /**
  * 注文データの保存先を抽象化する簡易リポジトリ。
  * PostgreSQL(TypeORM)に保存している。呼び出し側(OrdersService)はこのクラスの
@@ -95,6 +123,98 @@ export class OrdersRepository {
 
     const entities = await qb.getMany();
     return entities.map((e) => this.toRecord(e));
+  }
+
+  async findForAnalysis(
+    filter: AnalysisOrdersFilter,
+    maxRows: number,
+  ): Promise<AnalysisOrdersSearchResult> {
+    const qb = this.ordersRepository
+      .createQueryBuilder('order')
+      .leftJoin('order.product', 'product');
+
+    if (filter.dateFrom) {
+      qb.andWhere('order.createdAt >= :dateFrom', { dateFrom: filter.dateFrom });
+    }
+    if (filter.dateTo) {
+      qb.andWhere('order.createdAt <= :dateTo', { dateTo: filter.dateTo });
+    }
+    if (filter.statuses?.length) {
+      qb.andWhere('order.status IN (:...statuses)', { statuses: filter.statuses });
+    }
+    if (filter.productNames?.length) {
+      const productConditions = filter.productNames.map(
+        (_, index) => `product.name ILIKE :productName${index}`,
+      );
+      qb.andWhere(`(${productConditions.join(' OR ')})`);
+      filter.productNames.forEach((name, index) => {
+        qb.setParameter(`productName${index}`, `%${name}%`);
+      });
+    }
+    if (filter.hasAttachment !== undefined) {
+      qb.andWhere(
+        filter.hasAttachment
+          ? 'cardinality("order"."file_names") > 0'
+          : 'cardinality("order"."file_names") = 0',
+      );
+    }
+
+    const matchedOrderCount = await qb.getCount();
+    if (matchedOrderCount > maxRows) {
+      return { orders: [], matchedOrderCount };
+    }
+
+    const rows = await qb
+      .select('product.name', 'productName')
+      .addSelect('order.quantity', 'quantity')
+      .addSelect('order.totalPrice', 'totalPrice')
+      .addSelect('order.status', 'status')
+      .addSelect('order.createdAt', 'orderedAt')
+      .addSelect('cardinality("order"."file_names") > 0', 'hasAttachment')
+      .orderBy('order.createdAt', 'ASC')
+      .getRawMany<{
+        productName: string;
+        quantity: number;
+        totalPrice: number;
+        status: OrderStatus;
+        orderedAt: Date | string;
+        hasAttachment: boolean;
+      }>();
+
+    return {
+      matchedOrderCount,
+      orders: rows.map((row) => ({
+        productName: row.productName,
+        quantity: Number(row.quantity),
+        totalPrice: Number(row.totalPrice),
+        status: row.status,
+        orderedAt:
+          row.orderedAt instanceof Date
+            ? row.orderedAt.toISOString()
+            : new Date(row.orderedAt).toISOString(),
+        hasAttachment: row.hasAttachment,
+      })),
+    };
+  }
+
+  async findCustomerPersonalValues(): Promise<OrderPersonalValues[]> {
+    const rows = await this.ordersRepository
+      .createQueryBuilder('order')
+      .select('order.customerName', 'customerName')
+      .addSelect('order.customerEmail', 'customerEmail')
+      .addSelect('order.customerPhone', 'customerPhone')
+      .distinct(true)
+      .getRawMany<{
+        customerName: string;
+        customerEmail: string;
+        customerPhone: string | null;
+      }>();
+
+    return rows.map((row) => ({
+      customerName: row.customerName,
+      customerEmail: row.customerEmail,
+      customerPhone: row.customerPhone ?? undefined,
+    }));
   }
 
   async findById(id: string): Promise<OrderRecord | undefined> {

@@ -1,7 +1,11 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import { OrdersRepository, OrderRecord } from '../data/orders.repository';
+import {
+  AnalysisOrdersFilter,
+  OrdersRepository,
+  OrderRecord,
+} from '../data/orders.repository';
 import { StorageService } from '../storage/storage.service';
 import { MailService } from '../mail/mail.service';
 import { ProductsService } from '../products/products.service';
@@ -109,6 +113,22 @@ export class OrdersService {
       dateFrom: query.dateFrom ? `${query.dateFrom}T00:00:00.000Z` : undefined,
       dateTo: query.dateTo ? `${query.dateTo}T23:59:59.999Z` : undefined,
     });
+  }
+
+  async findForAnalysis(filter: AnalysisOrdersFilter, maxRows: number) {
+    return this.ordersRepository.findForAnalysis(
+      {
+        ...filter,
+        // 管理画面の利用者に合わせ、日付境界は日本時間としてDBへ渡す。
+        dateFrom: filter.dateFrom ? `${filter.dateFrom}T00:00:00.000+09:00` : undefined,
+        dateTo: filter.dateTo ? `${filter.dateTo}T23:59:59.999+09:00` : undefined,
+      },
+      maxRows,
+    );
+  }
+
+  async findCustomerPersonalValues() {
+    return this.ordersRepository.findCustomerPersonalValues();
   }
 
   async findById(orderId: string) {
