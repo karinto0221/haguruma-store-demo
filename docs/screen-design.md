@@ -18,8 +18,9 @@
 | 10 | 商品マスタ管理画面 | `/admin/master/products` | `features/product-master` | ユーザーID・パスワード |
 | 11 | 更新情報画面 | `/admin/updates` | `features/update-history` | ユーザーID・パスワード |
 | 12 | AI注文分析画面 | `/admin/order-analysis` | `features/order-analysis` | ユーザーID・パスワード |
+| 13 | アカウント管理画面 | `/admin/master/accounts` | `features/admin-accounts` | アクセストークン |
 
-ルーティング定義: `frontend/src/route/index.tsx`。`/admin`配下の6画面はReact Routerのネストルートで`components/layout/AdminGate.tsx`配下に置かれ、ログイン状態を`AdminAuthProvider`で共有する。
+ルーティング定義: `frontend/src/route/index.tsx`。`/admin`配下の管理画面はReact Routerのネストルートで`components/layout/AdminGate.tsx`配下に置かれ、ログイン状態を`AdminAuthProvider`で共有する。
 
 ## 2. 画面遷移図
 
@@ -33,7 +34,7 @@
 [6. 管理者ログイン画面] --ログイン成功--> [7. 管理者注文一覧画面](既定の遷移先)
 [7. 管理者注文一覧画面] --注文カードを選択--> [8. 注文詳細画面]
 [8. 注文詳細画面] --「注文一覧へ戻る」--> [7. 管理者注文一覧画面]
-[7〜12 いずれかの管理画面] --サイドバー下部「ログアウト」--> [6. 管理者ログイン画面]
+[管理画面のいずれか] --サイドバー下部「ログアウト」--> [6. 管理者ログイン画面]
 ```
 
 - 画面4→5の遷移では、`react-router`の`navigate('/confirm', { state: { orderId } })`でorderIdを渡している。`/confirm`に直接アクセスした場合(リロード等)は`orderId`が失われ、注文番号非表示のまま完了メッセージのみ表示される。
@@ -159,25 +160,26 @@
 ### 挙動
 
 - 「ログイン」ボタンは両フィールドが空の間は非活性。
-- 送信すると、入力値をヘッダー(`x-admin-id` / `x-admin-password`)に載せて `POST /api/admin/login` を呼び出し、成功可否でログイン成否を判定する(注文一覧取得への副作用的な流用ではなく、専用のログイン確認APIになった)。
-- 成功すると`AdminAuthProvider`(React Context)に認証情報を保持し、`AdminGate`が`AdminLayout`+実際のページ(`<Outlet/>`)を表示する。既定の遷移先は`/admin`(管理者注文一覧画面)。
+- 送信すると、ログインIDとパスワードをJSONで`POST /api/admin/auth/login`へ送り、成功時に短期アクセストークンを受け取る。
+- 成功するとアクセストークンをメモリに保持し、`AdminGate`が`AdminLayout`+実際のページ(`<Outlet/>`)を表示する。既定の遷移先は`/admin`(管理者注文一覧画面)。
 - 失敗時(401等)は `.error-box` にエラーメッセージを表示し、ログイン画面のまま留まる。
-- ログイン成功時は`AdminAuthProvider`のReact stateとブラウザの`sessionStorage`に認証情報を保持する。同じタブで画面をリロードした場合は保存済み認証情報を復元するため、再ログインは不要。ログアウト操作またはタブを閉じると認証情報は破棄される。保存値が不正・破損している場合も破棄してログイン画面を表示する。
+- リフレッシュトークンはJavaScriptから参照できないHttpOnly Cookieへ保存する。リロード時やアクセストークン期限切れ時は`POST /api/admin/auth/refresh`で再発行し、失敗時はログイン画面へ戻る。パスワードはブラウザへ保存しない。
 
 ### 9.1 サイドバー(AdminLayout)
 
-ログイン後の管理画面(7〜12)は共通で`components/layout/AdminLayout.tsx`によるサイドバー付きレイアウトを持つ。shadcn/uiの`Sidebar`コンポーネント(`collapsible="icon"`)を使用。
+ログイン後の管理画面は共通で`components/layout/AdminLayout.tsx`によるサイドバー付きレイアウトを持つ。shadcn/uiの`Sidebar`コンポーネント(`collapsible="icon"`)を使用。
 
 | 要素 | 内容 |
 |---|---|
-| サイドバーヘッダー | 開閉トリガーボタン(`SidebarTrigger`) |
+| ログイン中のアカウント | デスクトップのサイドバー展開時と、スマートフォンのサイドメニュー表示時に、最上部へユーザーアイコン・アカウント名・ログインIDを表示。デスクトップの折りたたみ時は非表示 |
 | メニューグループ「メニュー」 | 注文管理(`/admin`)・AI注文分析(`/admin/order-analysis`) |
-| メニューグループ「マスタ管理」 | 商品カテゴリ(`/admin/master/product-categories`)・商品マスタ(`/admin/master/products`) |
+| メニューグループ「マスタ管理」 | 商品カテゴリ(`/admin/master/product-categories`)・商品マスタ(`/admin/master/products`)・アカウント管理(`/admin/master/accounts`) |
 | サイドバーフッター | 更新情報(`/admin/updates`)とログアウトボタン。更新情報は業務メニューではなく補助情報としてログアウト直上に配置 |
 
 - サイドバーは開閉可能(`collapsible="icon"`): トリガーボタンでアイコンのみの折りたたみ表示と、ラベル付きの通常表示を切り替えられる。折りたたみ時は各メニュー項目にツールチップでラベルを表示。
+- ログイン成功時とリフレッシュによるセッション復元時にAPIから返されたアカウント情報を管理画面全体で保持し、サイドバーの表示に使用する。
 - 現在のURLに応じて、該当する末端のメニュー項目だけがハイライト(`isActive`)される。商品カテゴリ・商品マスタ表示中も、開閉用の親項目「マスタ管理」はハイライトしない。
-- サーバー側のセッション破棄処理は無い(そもそもサーバー側にセッション概念が無い)。
+- ログアウト時は`POST /api/admin/auth/logout`を呼び、サーバー側セッションとCookieを失効させる。
 
 ---
 
@@ -364,7 +366,19 @@
 
 ---
 
-## 14. 更新情報画面(features/update-history)
+## 14. アカウント管理画面(features/admin-accounts)
+
+- URL: `/admin/master/accounts`
+- 目的: 管理者サイトへログインできるアカウントの一覧確認・登録・編集を行う。
+- 一覧には表示名、ログインID、有効・無効、最終ログイン日時を表示する。
+- 新規作成では表示名、ログインID、8文字以上のパスワードを入力する。ログインIDは半角英数字・`.`・`_`・`-`のみ使用でき、重複不可。
+- 編集では表示名、ログインID、有効状態を変更できる。パスワード欄は入力した場合だけ変更する。
+- ログイン中の自分自身と、最後の有効な管理者アカウントは無効化できない。アカウント無効化またはパスワード変更時は、そのアカウントの既存セッションを失効させる。
+- 商品カテゴリ・商品マスタと同じ`MasterPageLayout`、`MasterTableViewport`、`MasterFormDialogLayout`を使用する。
+
+---
+
+## 15. 更新情報画面(features/update-history)
 
 - URL: `/admin/updates`
 - 目的: 管理者が現在デプロイされているアプリのバージョンと、これまでに追加・改善された機能を確認する。
@@ -376,7 +390,7 @@
 
 ---
 
-## 15. AI注文分析画面(features/order-analysis)
+## 16. AI注文分析画面(features/order-analysis)
 
 - URL: `/admin/order-analysis`
 - 目的: 管理者が注文データについて自然な文章で質問し、商品別の注文数・売上・ステータス別件数・期間比較などを確認するPoC画面。
@@ -394,7 +408,7 @@
 
 ## 16. 未実装・既知の制約(画面まわり)
 
-- 管理者ログイン状態は同一タブの`sessionStorage`に保持されるためリロードでは維持されるが、タブを閉じると破棄される。JWTやサーバーセッションによる認証ではない。
+- 管理者のアクセストークンはメモリだけに保持し、リロード時はHttpOnly Cookieのリフレッシュトークンから復元する。ログアウト、アカウント無効化、パスワード変更時はサーバー側セッションを失効する。
 - 注文の削除・キャンセル理由入力などの機能は無い(ステータスを`cancelled`にするだけ)。
 - ページネーションは無く、`GET /api/orders`・`GET /api/products`・`GET /api/product-categories`の結果を全件一覧表示する。
 - 商品マスタ・商品カテゴリの一括操作(複数選択削除など)は無い。

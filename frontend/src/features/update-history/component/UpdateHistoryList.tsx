@@ -23,7 +23,7 @@ function formatReleaseDate(value: string): string {
 }
 
 function formatCompactDate(value: string): string {
-  return value.replaceAll('-', '.');
+  return value.replace(/-/g, '.');
 }
 
 export default function UpdateHistoryList({ entries }: UpdateHistoryListProps) {

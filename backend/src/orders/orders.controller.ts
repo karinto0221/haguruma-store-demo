@@ -36,7 +36,7 @@ export class OrdersController {
     return this.ordersService.createOrder(dto, files);
   }
 
-  // 管理者向け: 注文一覧の取得・検索 (x-admin-id / x-admin-password ヘッダーが必要)
+  // 管理者向け: 注文一覧の取得・検索 (Bearerアクセストークンが必要)
   @UseGuards(AdminAuthGuard)
   @Get()
   async findAll(@Query() query: QueryOrdersDto) {
@@ -73,7 +73,7 @@ export class OrdersController {
     return this.ordersService.updateStatus(id, dto.status);
   }
 
-  // 管理者向け: 支払いリンクを確定してお客様にメール送信 (x-admin-id / x-admin-password ヘッダーが必要)
+  // 管理者向け: 支払いリンクを確定してお客様にメール送信 (Bearerアクセストークンが必要)
   @UseGuards(AdminAuthGuard)
   @Post(':id/send-payment-link')
   async sendPaymentLink(@Param('id') id: string, @Body() dto: SendPaymentLinkDto) {

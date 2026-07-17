@@ -1,12 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  fetchOrderAdmin,
-  fetchOrderAttachmentAdmin,
-  OrderRecord,
-  OrderStatus,
-  sendPaymentLinkAdmin,
-  updateOrderStatusAdmin,
-} from '@/api';
+import type { OrderRecord, OrderStatus } from '@/api';
+import { useOrdersApi } from '@/api/hook/useOrdersApi';
 import { useAdminAuth } from '@/features/admin-auth';
 import { AttachmentKind, OrderAttachment } from '../type';
 
@@ -20,7 +14,8 @@ function getAttachmentKind(fileName: string): AttachmentKind {
 }
 
 export function useOrderDetail(orderId: string | undefined) {
-  const { credentials } = useAdminAuth();
+  const { account } = useAdminAuth();
+  const api = useOrdersApi();
   const [order, setOrder] = useState<OrderRecord | null>(null);
   const [attachments, setAttachments] = useState<OrderAttachment[]>([]);
   const [paymentLink, setPaymentLink] = useState('');
@@ -37,7 +32,7 @@ export function useOrderDetail(orderId: string | undefined) {
   }, []);
 
   useEffect(() => {
-    if (!credentials || !orderId) return;
+    if (!account || !orderId) return;
     let cancelled = false;
     setLoading(true);
     setError('');
@@ -46,7 +41,7 @@ export function useOrderDetail(orderId: string | undefined) {
 
     const load = async () => {
       try {
-        const data = await fetchOrderAdmin(credentials, orderId);
+        const data = await api.fetchOneAdmin(orderId);
         if (cancelled) return;
         setOrder(data);
         setPaymentLink(data.paymentLink || '');
@@ -54,7 +49,7 @@ export function useOrderDetail(orderId: string | undefined) {
         const loadedAttachments = await Promise.all(
           data.fileNames.map(async (name, index): Promise<OrderAttachment> => {
             try {
-              const blob = await fetchOrderAttachmentAdmin(credentials, orderId, index);
+              const blob = await api.fetchAttachmentAdmin(orderId, index);
               if (cancelled) {
                 return { index, name, kind: getAttachmentKind(name) };
               }
@@ -85,15 +80,15 @@ export function useOrderDetail(orderId: string | undefined) {
       cancelled = true;
       clearObjectUrls();
     };
-  }, [clearObjectUrls, credentials, orderId]);
+  }, [account, clearObjectUrls, orderId]);
 
   const updateStatus = async (status: OrderStatus) => {
-    if (!credentials || !orderId) return;
+    if (!account || !orderId) return;
     setSavingStatus(true);
     setError('');
     setSuccess('');
     try {
-      setOrder(await updateOrderStatusAdmin(credentials, orderId, status));
+      setOrder(await api.updateStatusAdmin(orderId, status));
       setSuccess('注文ステータスを更新しました。');
     } catch (e: any) {
       setError(e.message || 'ステータスの更新に失敗しました');
@@ -103,12 +98,12 @@ export function useOrderDetail(orderId: string | undefined) {
   };
 
   const sendPaymentLink = async () => {
-    if (!credentials || !orderId || !paymentLink.trim()) return;
+    if (!account || !orderId || !paymentLink.trim()) return;
     setSending(true);
     setError('');
     setSuccess('');
     try {
-      const updated = await sendPaymentLinkAdmin(credentials, orderId, paymentLink.trim());
+      const updated = await api.sendPaymentLinkAdmin(orderId, paymentLink.trim());
       setOrder(updated);
       setPaymentLink(updated.paymentLink || paymentLink.trim());
       setSuccess('支払いURLをお客様へ送信しました。');

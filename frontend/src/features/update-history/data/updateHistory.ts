@@ -12,6 +12,16 @@ export const CURRENT_APP_VERSION = packageJson.version;
 // ユーザーに見える機能追加・修正を行ったら、該当バージョンのchangesへ1項目追加する。
 export const UPDATE_HISTORY: UpdateHistoryEntry[] = [
   {
+    version: '0.4.0',
+    releasedAt: '2026-07-17',
+    summary: 'アカウント管理機能を追加し、管理画面のログインを強化',
+    changes: [
+      '管理画面を利用できるアカウントを複数登録・編集できるようにしました。',
+      '管理画面のログインの安全性を高めました。',
+      'ログイン中のアカウントを確認できるようにするなど、管理画面のUI関連の調整を行いました。',
+    ],
+  },
+  {
     version: '0.3.0',
     releasedAt: '2026-07-16',
     summary: '個人情報を除外したAI注文分析機能を追加',
@@ -19,7 +29,6 @@ export const UPDATE_HISTORY: UpdateHistoryEntry[] = [
       '管理画面に、注文データについて自然な文章で質問できるAI注文分析ページを追加しました。',
       '個人情報を含む質問を送信前に確認し、安全にAI注文分析を利用できるようにしました。',
       '質問内容に合った注文を分析し、回答を確認しやすくしました。',
-      '管理画面のメニューや更新情報など、UIを見やすく調整しました。',
     ],
   },
   {

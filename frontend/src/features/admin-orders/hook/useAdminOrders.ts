@@ -1,9 +1,6 @@
 import { useEffect, useState } from 'react';
-import {
-  fetchOrdersAdmin,
-  OrderRecord,
-  OrdersSearchFilter,
-} from '@/api';
+import type { OrderRecord, OrdersSearchFilter } from '@/api';
+import { useOrdersApi } from '@/api/hook/useOrdersApi';
 import { useAdminAuth } from '@/features/admin-auth';
 
 const EMPTY_FILTER: OrdersSearchFilter = {
@@ -15,22 +12,22 @@ const EMPTY_FILTER: OrdersSearchFilter = {
 };
 
 export function useAdminOrders() {
-  const { credentials, logout } = useAdminAuth();
+  const { account } = useAdminAuth();
+  const api = useOrdersApi();
   const [filter, setFilter] = useState<OrdersSearchFilter>(EMPTY_FILTER);
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const load = async (appliedFilter: OrdersSearchFilter) => {
-    if (!credentials) return;
+    if (!account) return;
     setLoading(true);
     setError('');
     try {
-      const data = await fetchOrdersAdmin(credentials, appliedFilter);
+      const data = await api.fetchAllAdmin(appliedFilter);
       setOrders(data);
     } catch (e: any) {
       setError(e.message);
-      logout();
     } finally {
       setLoading(false);
     }
@@ -39,7 +36,7 @@ export function useAdminOrders() {
   useEffect(() => {
     load(filter);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [credentials]);
+  }, [account]);
 
   const handleSearch = async () => {
     await load(filter);

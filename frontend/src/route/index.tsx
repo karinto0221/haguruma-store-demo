@@ -11,6 +11,7 @@ import OrderDetail from '@/pages/OrderDetail';
 import UpdateHistory from '@/pages/UpdateHistory';
 import OrderAnalysis from '@/pages/OrderAnalysis';
 import AdminGate from '@/components/layout/AdminGate';
+import AdminAccounts from '@/pages/AdminAccounts';
 
 export default function AppRoutes() {
   return (
@@ -26,6 +27,7 @@ export default function AppRoutes() {
         <Route path="/admin/order-analysis" element={<OrderAnalysis />} />
         <Route path="/admin/master/product-categories" element={<ProductCategories />} />
         <Route path="/admin/master/products" element={<ProductMaster />} />
+        <Route path="/admin/master/accounts" element={<AdminAccounts />} />
         <Route path="/admin/updates" element={<UpdateHistory />} />
       </Route>
     </Routes>

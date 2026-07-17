@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { fetchProductCategories, fetchProducts, Product, ProductCategory } from '@/api';
+import type { Product, ProductCategory } from '@/api';
+import { useCatalogApi } from '@/api/hook/useCatalogApi';
 import type { ProductGridColumns } from '../type';
 
 export function useCategoryProducts(categoryId: string | undefined) {
+  const api = useCatalogApi();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -10,7 +12,7 @@ export function useCategoryProducts(categoryId: string | undefined) {
   const [columns, setColumns] = useState<ProductGridColumns>(2);
 
   useEffect(() => {
-    Promise.all([fetchProducts(), fetchProductCategories()])
+    Promise.all([api.fetchProducts(), api.fetchProductCategories()])
       .then(([productList, categoryList]) => {
         setProducts(productList);
         setCategories(categoryList);

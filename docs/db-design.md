@@ -104,6 +104,34 @@
 
 - ステータス間の遷移に業務ルール上の制約は無く、管理画面からどの値へも自由に変更可能(アプリケーション層・DB層とも遷移制約なし)。
 
+### 2.5 admin_accounts(管理者アカウント)
+
+| カラム名 | 型 | NULL | 説明 |
+|---|---|---|---|
+| id | uuid | NOT NULL | 主キー、自動採番 |
+| login_id | varchar(100) | NOT NULL | 一意なログインID |
+| name | varchar(100) | NOT NULL | 管理画面に表示する名前 |
+| password_hash | varchar(255) | NOT NULL | scryptによるsalt付きパスワードハッシュ。平文は保存しない |
+| is_active | boolean | NOT NULL | ログイン・API利用可否 |
+| last_login_at | timestamptz | NULL可 | 最終ログイン成功日時 |
+| created_at | timestamptz | NOT NULL | 作成日時 |
+| updated_at | timestamptz | NOT NULL | 更新日時 |
+
+初回起動時にレコードが0件の場合だけ、`ADMIN_USER_ID`・`ADMIN_PASSWORD`から初期管理者を1件作成する。以降の管理はアカウント管理画面から行う。
+
+### 2.6 admin_sessions(管理者ログインセッション)
+
+| カラム名 | 型 | NULL | 説明 |
+|---|---|---|---|
+| id | uuid | NOT NULL | 主キー、自動採番 |
+| token_hash | varchar(64) | NOT NULL | リフレッシュトークンのSHA-256ハッシュ、一意 |
+| account_id | uuid | NOT NULL | `admin_accounts.id`への外部キー、削除時CASCADE |
+| expires_at | timestamptz | NOT NULL | セッション有効期限 |
+| revoked_at | timestamptz | NULL可 | ログアウト・再発行・無効化による失効日時 |
+| created_at | timestamptz | NOT NULL | 作成日時 |
+
+リフレッシュトークン本体はDBへ保存せず、HttpOnly Cookieとハッシュの照合で検証する。再発行時は使用済みセッションを失効し、新しいトークンへローテーションする。
+
 ## 3. インデックス一覧
 
 | インデックス名                 | テーブル           | 対象カラム | 種別                                      |
@@ -113,6 +141,9 @@
 | PK_710e2d4957aa5878dfe94e4ac2f | orders             | id         | PRIMARY KEY                               |
 | IDX_775c9f06fc27ae3ff8fb26f2c4 | orders             | status     | INDEX(完全一致検索・ステータス絞り込み用) |
 | IDX_c884e321f927d5b86aac7c8f9e | orders             | created_at | INDEX(期間絞り込み・ソート用)             |
+| UQ_admin_accounts_login_id | admin_accounts | login_id | UNIQUE |
+| IDX_admin_sessions_token_hash | admin_sessions | token_hash | UNIQUE |
+| IDX_admin_sessions_account_id | admin_sessions | account_id | INDEX |
 
 - `products.product_category_id`、`orders.product_id`はFK制約のみでインデックスは付与していない(現状カテゴリ・商品ごとの絞り込みクエリが無いため)。
 
@@ -128,6 +159,7 @@
 | `1783910000000-AddCatalogImagesAndCustomerPhone.ts` | `product_categories`・`products`に画像バイナリ/MIME列を追加し、`orders`に任意の電話番号列を追加                                                                           |
 | `1783911000000-AddCompletedOrderStatus.ts`          | PostgreSQL ENUM `order_status`へ`completed`を追加。ロールバック時は`completed`の注文を`reviewing`へ戻してENUMを再作成                                                     |
 | `1784080000000-AddOrderTotalPrice.ts`               | `orders.total_price`を追加。既存注文はマイグレーション実行時点の`products.price_from × quantity`で補完し、NOT NULL・0以上のCHECK制約を設定                                 |
+| `1784250000000-AddAdminAccountsAndSessions.ts` | `admin_accounts`・`admin_sessions`を追加し、複数管理者と失効可能なリフレッシュセッションに対応 |
 
 運用コマンド(`backend/package.json`):
 
@@ -151,7 +183,7 @@ npm run migration:revert                                       # 直近のマイ
 
 ## 6. 現状の制約・今後の検討事項
 
-- `product_categories`・`products`・`orders`以外にテーブルは存在しない。管理者アカウント情報はDBではなく環境変数(`ADMIN_USER_ID`/`ADMIN_PASSWORD`)で管理しており、複数管理者アカウントには対応していない。
+- 管理者アカウントは`admin_accounts`で複数管理し、`ADMIN_USER_ID`・`ADMIN_PASSWORD`は初回アカウント作成時だけ使用する。
 - お客様向け画面はカテゴリ選択後、取得済みの商品一覧を`product_category_id`でフロント側絞り込みして表示する。専用のカテゴリ別商品APIは無い。
 - カテゴリ画像・商品画像は現時点ではDBの`bytea`列に保存する。公開APIは画像本体を一覧JSONへ埋め込まず、専用画像URLを返す。将来S3等へ移行する場合はこのURL契約を維持しつつ保存・配信実装を差し替える想定。
 - アップロードファイルの実体(バイナリ)はDBに保存されておらず、`UPLOAD_DIR`配下のローカルディスクに保存される。`orders.file_paths`はその参照パスのみを保持する。

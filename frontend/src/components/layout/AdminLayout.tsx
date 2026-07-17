@@ -1,12 +1,14 @@
 import { MouseEvent, ReactNode, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ChevronRight, ClipboardList, History, Layers, LogOut, Sparkles } from 'lucide-react';
+import { ChevronRight, CircleUserRound, ClipboardList, History, Layers, LogOut, Sparkles } from 'lucide-react';
+import type { AdminAccount } from '@/api';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
+  SidebarHeader,
   SidebarInset,
   SidebarMenu,
   SidebarMenuButton,
@@ -22,26 +24,28 @@ import {
 const MASTER_NAV = [
   { to: '/admin/master/product-categories', label: '商品カテゴリ' },
   { to: '/admin/master/products', label: '商品マスタ' },
+  { to: '/admin/master/accounts', label: 'アカウント管理' },
 ];
 
 interface AdminLayoutProps {
+  account: AdminAccount;
   onLogout: () => void;
   children: ReactNode;
 }
 
 // 管理画面共通のレイアウト。開閉可能なサイドバーを持つ。
-export default function AdminLayout({ onLogout, children }: AdminLayoutProps) {
+export default function AdminLayout({ account, onLogout, children }: AdminLayoutProps) {
   return (
     <SidebarProvider>
-      <AdminSidebar onLogout={onLogout}>{children}</AdminSidebar>
+      <AdminSidebar account={account} onLogout={onLogout}>{children}</AdminSidebar>
     </SidebarProvider>
   );
 }
 
 // useSidebar()はSidebarProvider配下でしか呼べないため、内側のコンポーネントに分けている
-function AdminSidebar({ onLogout, children }: AdminLayoutProps) {
+function AdminSidebar({ account, onLogout, children }: AdminLayoutProps) {
   const location = useLocation();
-  const { state, setOpen } = useSidebar();
+  const { isMobile, state, setOpen } = useSidebar();
   const isOrdersActive =
     location.pathname === '/admin' || location.pathname.startsWith('/admin/orders/');
   const isOrderAnalysisActive = location.pathname === '/admin/order-analysis';
@@ -63,6 +67,15 @@ function AdminSidebar({ onLogout, children }: AdminLayoutProps) {
   return (
     <>
       <Sidebar collapsible="icon">
+        {(isMobile || state === 'expanded') && (
+          <SidebarHeader className="admin-sidebar-account">
+            <CircleUserRound aria-hidden="true" />
+            <div className="admin-sidebar-account-text">
+              <strong>{account.name}</strong>
+              <span>{account.loginId}</span>
+            </div>
+          </SidebarHeader>
+        )}
         <SidebarContent>
           <SidebarGroup>
             <SidebarMenu>

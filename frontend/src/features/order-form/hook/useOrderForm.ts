@@ -1,9 +1,13 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { createOrder, fetchProduct, Product } from '@/api';
+import type { Product } from '@/api';
+import { useCatalogApi } from '@/api/hook/useCatalogApi';
+import { useOrdersApi } from '@/api/hook/useOrdersApi';
 
 export function useOrderForm(productId: string | undefined) {
   const navigate = useNavigate();
+  const catalogApi = useCatalogApi();
+  const ordersApi = useOrdersApi();
   const [searchParams] = useSearchParams();
 
   const [product, setProduct] = useState<Product | null>(null);
@@ -21,7 +25,7 @@ export function useOrderForm(productId: string | undefined) {
 
   useEffect(() => {
     if (!productId) return;
-    fetchProduct(productId).then(setProduct).catch((e) => setError(e.message));
+    catalogApi.fetchProduct(productId).then(setProduct).catch((e) => setError(e.message));
   }, [productId]);
 
   const handleSubmit = async (e: FormEvent) => {
@@ -30,7 +34,7 @@ export function useOrderForm(productId: string | undefined) {
     setSubmitting(true);
     setError('');
     try {
-      const { orderId } = await createOrder({
+      const { orderId } = await ordersApi.create({
         productId,
         customerName,
         customerEmail,

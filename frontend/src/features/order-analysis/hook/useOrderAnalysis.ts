@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { analyzeOrdersAdmin } from '@/api';
+import { useOrdersApi } from '@/api/hook/useOrdersApi';
 import { useAdminAuth } from '@/features/admin-auth';
 import type { AnalysisChatMessage } from '../type';
 
@@ -19,7 +19,8 @@ function createMessage(role: AnalysisChatMessage['role'], content: string): Anal
 }
 
 export function useOrderAnalysis() {
-  const { credentials } = useAdminAuth();
+  const { account } = useAdminAuth();
+  const api = useOrdersApi();
   const [messages, setMessages] = useState<AnalysisChatMessage[]>([INITIAL_MESSAGE]);
   const [question, setQuestion] = useState('');
   const [error, setError] = useState('');
@@ -29,7 +30,7 @@ export function useOrderAnalysis() {
 
   const sendQuestion = async (value: string) => {
     const trimmedQuestion = value.trim();
-    if (!credentials || !trimmedQuestion || loading) return;
+    if (!account || !trimmedQuestion || loading) return;
 
     const history = messages
       .filter((message) => message.id !== INITIAL_MESSAGE.id)
@@ -42,7 +43,7 @@ export function useOrderAnalysis() {
     setError('');
     setLoading(true);
     try {
-      const result = await analyzeOrdersAdmin(credentials, trimmedQuestion, history);
+      const result = await api.analyzeAdmin(trimmedQuestion, history);
       setMessages((current) => [...current, createMessage('assistant', result.answer)]);
       setAnalyzedOrderCount(result.analyzedOrderCount);
       setMatchedOrderCount(result.matchedOrderCount);
