@@ -100,7 +100,6 @@ function AdminSidebar({ onLogout, children }: AdminLayoutProps) {
                 <SidebarMenuItem>
                   <CollapsibleTrigger asChild>
                     <SidebarMenuButton
-                      isActive={isMasterActive}
                       tooltip="マスタ管理"
                       onClick={handleMasterTriggerClick}
                     >

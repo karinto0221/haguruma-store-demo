@@ -1260,13 +1260,19 @@ body {
   gap: 12px;
   margin: 4px 0 0;
   padding: 18px 18px 18px 36px;
+  list-style: disc;
   border-radius: 10px;
   background: color-mix(in srgb, var(--color-background) 72%, var(--color-surface));
 }
 
 .update-history-dialog-list li {
   padding-left: 2px;
+  font-size: 13px;
   line-height: 1.7;
+}
+
+.update-history-dialog-list li::marker {
+  color: var(--color-primary);
 }
 
 .filter-field {
