@@ -13,4 +13,12 @@ COPY --from=build /app/package.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 EXPOSE 3000
-CMD ["node", "dist/main.js"]
+
+# entrypoint.shをコンテナ内にコピー
+COPY entrypoint.sh /app/entrypoint.sh
+
+# 実行権限を付与(これを忘れると「Permission denied」で起動失敗する)
+RUN chmod +x /app/entrypoint.sh
+
+# コンテナ起動時にこのスクリプトを実行させる
+ENTRYPOINT ["/app/entrypoint.sh"]
